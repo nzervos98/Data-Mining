@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import sklearn as sk
 import matplotlib as plt
+from sklearn.impute import KNNImputer
 
 data = pd.read_csv('healthcare-dataset-stroke-data.csv')
 
@@ -97,18 +98,38 @@ plotwork = data.groupby(['work_type', 'stroke'])['work_type'].count().unstack()
 plotwork.plot.bar()
 
 
-#Τροποποιούμε τις τιμές του smoking status για την καλύτερη διαχείριση των δεδομένων
-data['smoking_status_new'] = data['smoking_status'].map({'Unknown' : np.nan, 'never smoked' : 0,  
+#Αφαιρούμε τις περιττές για την συμπλήρωση τιμών στήλες των δεδομένων μας
+not_used_cols = ['id', 'shrink_ages', 'shrink_bmi', 'shrink_glucose']
+for i in not_used_cols:
+    data = data.drop(i, axis=1)
+    
+#Φτιάχνουμε ένα αντίγραφο του μοντέλου που θα εφαρμόσουμε τις μεθόδους που μας ζητούνται.
+data_new = data.copy()
+
+#Τροποποιούμε τις τιμές των κατηγορικών δεδομένων για την καλύτερη διαχείρισή τους.
+data_new['smoking_status'] = data_new['smoking_status'].map({'Unknown' : np.nan, 'never smoked' : 0,  
                                                          'formerly smoked' : 1, 'smokes' : 2})
+data_new['gender'] = data_new['gender'].map({'Male' : 0, 'Female' : 1})
+data_new['ever_married'] = data_new['ever_married'].map({'No' : 0, 'Yes' : 1})
+data_new['work_type'] = data_new['work_type'].map({'Private' : 0, 'Self-employed' : 1, 'children' : 2,
+                                                   'Govt_job' : 3, 'Never_worked' : 4})
+data_new['Residence_type'] = data_new['Residence_type'].map({'Urban' : 0, 'Rural' : 1})
 
-#Πίνακας έπειτα από αφαίρεση της στήλης που περιέχει μια τιμή NaN
-data_drop = data.dropna()
+#Μελετάμε τις ελλειπείς τιμές
+print('Missing values from dataset\n' + str(data_new.isna().sum()))
 
-#
-data_replace_mean = data
+#Πίνακας έπειτα από αφαίρεση της στήλης που περιέχει μια τιμή NaN.
+data_drop = data_new.dropna()
 
-x = data['smoking_status_new'].mean()
-data_replace_mean['smoking_status_new'] = data_replace_mean['smoking_status_new'].replace(np.nan, x)
+#Δεδομένα έπειτα από την συμπλήρωση των τιμών NaN με το μέσο όρο των υπόλοιπων τιμών της στήλης.
+data_replace_mean = data_new.copy()
 
-y = data['bmi'].mean()
-data_replace_mean['bmi'] = data_replace_mean['bmi'].replace(np.nan, y)
+#Aντικαθηστούμε την κάθε NaN τιμή με τον μέσο όρο της αντίστοιχης στήλης.
+data_replace_mean['smoking_status'] = data_replace_mean['smoking_status'].replace(np.nan, data_replace_mean['smoking_status'].mean())
+data_replace_mean['bmi'] = data_replace_mean['bmi'].replace(np.nan, data_replace_mean['bmi'].mean())
+
+data_knn = data_new.copy()
+
+
+
+cat_values = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
