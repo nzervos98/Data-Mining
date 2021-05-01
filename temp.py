@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 import sklearn as sk
 import matplotlib as plt
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import KNNImputer
+
 
 data = pd.read_csv('healthcare-dataset-stroke-data.csv')
 
@@ -115,10 +117,10 @@ data_new['work_type'] = data_new['work_type'].map({'Private' : 0, 'Self-employed
                                                    'Govt_job' : 3, 'Never_worked' : 4})
 data_new['Residence_type'] = data_new['Residence_type'].map({'Urban' : 0, 'Rural' : 1})
 
-#Μελετάμε τις ελλειπείς τιμές
+#Μελετάμε τις ελλειπείς τιμές.
 print('Missing values from dataset\n' + str(data_new.isna().sum()))
 
-#Πίνακας έπειτα από αφαίρεση της στήλης που περιέχει μια τιμή NaN.
+#Δεδομένα έπειτα από αφαίρεση της στήλης που περιέχει μια τιμή NaN.
 data_drop = data_new.dropna()
 
 #Δεδομένα έπειτα από την συμπλήρωση των τιμών NaN με το μέσο όρο των υπόλοιπων τιμών της στήλης.
@@ -128,8 +130,15 @@ data_replace_mean = data_new.copy()
 data_replace_mean['smoking_status'] = data_replace_mean['smoking_status'].replace(np.nan, data_replace_mean['smoking_status'].mean())
 data_replace_mean['bmi'] = data_replace_mean['bmi'].replace(np.nan, data_replace_mean['bmi'].mean())
 
+#Δεδομένα έπειτα από συμπλήρωση τιμών NaN με kNN μέθοδο
 data_knn = data_new.copy()
 
+#Scaling των δεδομένων μας.
+scaler = MinMaxScaler()
+data_knn = pd.DataFrame(scaler.fit_transform(data_knn), columns = data_knn.columns)
 
+#Χρήση του kNN imputer για τον υπολογισμό των άγνωστων τιμών μας.
+imputer = KNNImputer(n_neighbors=5)
+data_knn = pd.DataFrame(imputer.fit_transform(data_knn),columns = data_knn.columns)
 
 cat_values = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
