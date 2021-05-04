@@ -5,6 +5,12 @@ import matplotlib as plt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.impute import KNNImputer
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import precision_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import recall_score
+from sklearn import metrics
 
 
 data = pd.read_csv('healthcare-dataset-stroke-data.csv')
@@ -112,7 +118,7 @@ data_new = data.copy()
 #Τροποποιούμε τις τιμές των κατηγορικών δεδομένων για την καλύτερη διαχείρισή τους.
 data_new['smoking_status'] = data_new['smoking_status'].map({'Unknown' : np.nan, 'never smoked' : 0,  
                                                          'formerly smoked' : 1, 'smokes' : 2})
-data_new['gender'] = data_new['gender'].map({'Male' : 0, 'Female' : 1})
+data_new['gender'] = data_new['gender'].map({'Male' : 0, 'Female' : 1, 'Other' : 2})
 data_new['ever_married'] = data_new['ever_married'].map({'No' : 0, 'Yes' : 1})
 data_new['work_type'] = data_new['work_type'].map({'Private' : 0, 'Self-employed' : 1, 'children' : 2,
                                                    'Govt_job' : 3, 'Never_worked' : 4})
@@ -145,10 +151,10 @@ data_knn = pd.DataFrame(imputer.fit_transform(data_knn),columns = data_knn.colum
 cat_values = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
 
 # Συμπλήρωση με linear regression για των υπολογισμό των missing values του bmi
-regression_data = data_new.copy()
+data_regression = data_new.copy()
 
 cols = ["age", "hypertension", "ever_married", "work_type", "avg_glucose_level", "bmi"] 
-df = regression_data[cols]
+df = data_regression[cols]
 test_df = df[df["bmi"].isnull()] # Επέστρεψε ενα df με τις γραμμές στις οποίες το bmi = nul.
 df = df.dropna() # Αφαίρεση ολων των γραμμών που έχουν nul
 
@@ -162,11 +168,11 @@ lr.fit(X_train, Y_train)
 Y_pred = lr.predict(X_test)
 
 # Αντικατάσταση των missing values με τις predicted για το bmi
-regression_data.loc[regression_data.bmi.isnull(), 'bmi'] = Y_pred
+data_regression.loc[data_regression.bmi.isnull(), 'bmi'] = Y_pred
 
 # Συμπλήρωση με linear regression για των υπολογισμό των missing values του smoking_status
-cols = ["gender", "age", "heart_disease","ever_married", "work_type", "Residence_type", "avg_glucose_level", "smoking_status","stroke"]  
-df = regression_data[cols]
+cols = ["gender", "age", "heart_disease","ever_married", "work_type", "Residence_type", "avg_glucose_level", "smoking_status","stroke"]
+df = data_regression[cols]
 test_df = df[df["smoking_status"].isnull()] # Επέστρεψε ενα df με τις γραμμές στις οποίες το smoking_status = nul.
 df = df.dropna() # Αφαίρεση ολων των γραμμών που έχουν nul
 
@@ -179,4 +185,112 @@ lr.fit(X_train, Y_train)
 Y_pred = lr.predict(X_test)
 
 # Αντικατάσταση των missing values με τις predicted για το smoking_status
-regression_data.loc[regression_data.smoking_status.isnull(), 'smoking_status'] = Y_pred
+data_regression.loc[data_regression.smoking_status.isnull(), 'smoking_status'] = Y_pred
+
+##### Random Forest για το μητρώο αφαίρεσης στήλης data_drop #####
+X_data_drop = data_drop.drop("stroke", axis=1)
+Y_data_drop = data_drop["stroke"]
+
+# Διαχωρισμός του data_drop σε training-test με αναλογία 75%-25% 
+X_train_data_drop, X_test_data_drop, Y_train_data_drop, Y_test_data_drop = train_test_split(X_data_drop,Y_data_drop, test_size=0.25)
+
+# Δημιουργεία του μοντελου 
+model = RandomForestClassifier(n_estimators=100)
+
+# Εκπέδευση του μοντέλου
+model.fit(X_train_data_drop, Y_train_data_drop)
+
+Y_pred_data_drop = model.predict(X_test_data_drop)
+
+# Aκρίβεια του μοντέλου
+acc = metrics.accuracy_score(Y_test_data_drop, Y_pred_data_drop)
+f1 = f1_score(Y_test_data_drop, Y_pred_data_drop, average='binary')
+prec = precision_score(Y_test_data_drop, Y_pred_data_drop, average='binary')
+recall = recall_score(Y_test_data_drop, Y_pred_data_drop, average='binary')
+print("Accuracy:",' %.3f' % (acc * 100.0))
+print("F1 score: ", f1)
+print("Precision score: ", prec)
+print("Recall score: ", recall)
+print("----------")
+
+##### Random Forest για το μητρώο με συμπλήρωση με την μέση τιμή data_replace_mean #####
+X_data_replace_mean = data_replace_mean.drop("stroke", axis=1)
+Y_data_replace_mean = data_replace_mean["stroke"]
+
+# Διαχωρισμός του data_replace_mean σε training-test με αναλογία 75%-25% 
+X_train_data_replace_mean, X_test_data_replace_mean, Y_train_data_replace_mean, Y_test_data_replace_mean = train_test_split(X_data_replace_mean,Y_data_replace_mean, test_size=0.25)
+
+# Δημιουργεία του μοντελου 
+model = RandomForestClassifier(n_estimators=100)
+
+# Εκπέδευση του μοντέλου
+model.fit(X_train_data_replace_mean, Y_train_data_replace_mean)
+
+Y_pred_data_replace_mean = model.predict(X_test_data_replace_mean)
+
+# Aκρίβεια του μοντέλου
+acc = metrics.accuracy_score(Y_test_data_replace_mean, Y_pred_data_replace_mean)
+f1 = f1_score(Y_test_data_replace_mean, Y_pred_data_replace_mean, average='binary')
+prec = precision_score(Y_test_data_replace_mean, Y_pred_data_replace_mean, average='binary')
+recall = recall_score(Y_test_data_replace_mean, Y_pred_data_replace_mean, average='binary')
+print("Accuracy:",' %.3f' % (acc * 100.0))
+print("F1 score: ", f1)
+print("Precision score: ", prec)
+print("Recall score: ", recall)
+print("----------")
+
+##### Random Forest για το μητρώο με συμπλήρωση με KNN data_knn #####
+X_data_knn = data_knn.drop("stroke", axis=1)
+Y_data_knn = data_knn["stroke"]
+
+# Διαχωρισμός του data_replace_mean σε training-test με αναλογία 75%-25% 
+X_train_data_knn, X_test_data_knn, Y_train_data_knn, Y_test_data_knn = train_test_split(X_data_knn,Y_data_knn, test_size=0.25)
+
+# Δημιουργεία του μοντελου 
+model = RandomForestClassifier(n_estimators=100)
+
+# Εκπέδευση του μοντέλου
+model.fit(X_train_data_knn, Y_train_data_knn)
+
+Y_pred_data_knn = model.predict(X_test_data_knn)
+
+# Aκρίβεια του μοντέλου
+acc = metrics.accuracy_score(Y_test_data_knn, Y_pred_data_knn)
+f1 = f1_score(Y_test_data_knn, Y_pred_data_knn, average='binary')
+prec = precision_score(Y_test_data_knn, Y_pred_data_knn, average='binary')
+recall = recall_score(Y_test_data_knn, Y_pred_data_knn, average='binary')
+print("Accuracy:",' %.3f' % (acc * 100.0))
+print("F1 score: ", f1)
+print("Precision score: ", prec)
+print("Recall score: ", recall)
+print("----------")
+
+##### Random Forest για το μητρώο με συμπλήρωση με linear regression data_regression #####
+X_data_regression = data_regression.drop("stroke", axis=1)
+Y_data_regression = data_regression["stroke"]
+
+# Διαχωρισμός του data_replace_mean σε training-test με αναλογία 75%-25% 
+X_train_data_regression, X_test_data_regression, Y_train_data_regression, Y_test_data_regression = train_test_split(X_data_regression,Y_data_regression, test_size=0.25)
+
+# Δημιουργεία του μοντελου 
+model = RandomForestClassifier(n_estimators=100)
+
+# Εκπέδευση του μοντέλου
+model.fit(X_train_data_regression, Y_train_data_regression)
+
+Y_pred_data_regression = model.predict(X_test_data_regression)
+
+# Aκρίβεια του μοντέλου
+acc = metrics.accuracy_score(Y_test_data_regression, Y_pred_data_regression)
+f1 = f1_score(Y_test_data_regression, Y_pred_data_regression, average='binary')
+prec = precision_score(Y_test_data_regression, Y_pred_data_regression, average='binary')
+recall = recall_score(Y_test_data_regression, Y_pred_data_regression, average='binary')
+print("Accuracy:",' %.3f' % (acc * 100.0))
+print("F1 score: ", f1)
+print("Precision score: ", prec)
+print("Recall score: ", recall)
+print("----------")
+
+
+
+
