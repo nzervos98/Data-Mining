@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
-import sklearn as sk
 import matplotlib as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score
+from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score, confusion_matrix
 
 
 data = pd.read_csv('healthcare-dataset-stroke-data.csv')
@@ -112,7 +111,9 @@ for i in not_used_cols:
 #Φτιάχνουμε ένα αντίγραφο του μοντέλου που θα εφαρμόσουμε τις μεθόδους που μας ζητούνται.
 data_new = data.copy()
 
+#Αυξήσαμε τα values του stroke κατά 1 καθώς παρουσίαζαν πρόβλημα στον υπολογισμό των μετρικών οι μηδενικές τιμές.
 data_new['stroke'] = data_new['stroke'] + 1
+
 #Τροποποιούμε τις τιμές των κατηγορικών δεδομένων για την καλύτερη διαχείρισή τους.
 lbl= LabelEncoder()
 data_new['gender'] = lbl.fit_transform(data_new['gender'])
@@ -123,7 +124,7 @@ data_new['Residence_type'] = lbl.fit_transform(data_new['Residence_type'])
 data_new['smoking_status'] = data_new['smoking_status'].map({'Unknown' : np.nan, 'never smoked' : 0,  
                                                          'formerly smoked' : 1, 'smokes' : 2})
 
-#Μελετάμε τις ελλειπείς τιμές.
+#Μελετάμε τις ελλειπείς (NaN) τιμές.
 print('Missing values from dataset\n' + str(data_new.isna().sum()))
 
 #Δεδομένα έπειτα από αφαίρεση της στήλης που περιέχει μια τιμή NaN.
@@ -186,17 +187,22 @@ Y_pred = lr.predict(X_test)
 # Αντικατάσταση των missing values με τις predicted για το smoking_status
 data_regression.loc[data_regression.smoking_status.isnull(), 'smoking_status'] = Y_pred
 
+
+#--------------------------RANDOM FOREST--------------------------#
+print('\n\n')
+
 ##### Random Forest για το μητρώο αφαίρεσης στήλης data_drop #####
+
 X_data_drop = data_drop.drop("stroke", axis=1)
 Y_data_drop = data_drop["stroke"]
 
 # Διαχωρισμός του data_drop σε training-test με αναλογία 75%-25% 
 X_train_data_drop, X_test_data_drop, Y_train_data_drop, Y_test_data_drop = train_test_split(X_data_drop,Y_data_drop, test_size=0.25)
 
-# Δημιουργεία του μοντελου 
+# Δημιουργία του μοντελου 
 model = RandomForestClassifier(n_estimators=100)
 
-# Εκπέδευση του μοντέλου
+# Εκπαίδευση του μοντέλου
 model.fit(X_train_data_drop, Y_train_data_drop)
 
 Y_pred_data_drop = model.predict(X_test_data_drop)
@@ -210,24 +216,26 @@ print("Accuracy:",' %.3f' % (acc * 100.0))
 print("F1 score: ", f1)
 print("Precision score: ", prec)
 print("Recall score: ", recall)
+print('Confusion Matrix: \n', confusion_matrix(Y_test_data_drop, Y_pred_data_drop))
 print("----------")
 
 ##### Random Forest για το μητρώο με συμπλήρωση με την μέση τιμή data_replace_mean #####
+
 X_data_replace_mean = data_replace_mean.drop("stroke", axis=1)
 Y_data_replace_mean = data_replace_mean["stroke"]
 
 # Διαχωρισμός του data_replace_mean σε training-test με αναλογία 75%-25% 
 X_train_data_replace_mean, X_test_data_replace_mean, Y_train_data_replace_mean, Y_test_data_replace_mean = train_test_split(X_data_replace_mean,Y_data_replace_mean, test_size=0.25)
 
-# Δημιουργεία του μοντελου 
+# Δημιουργία του μοντέλου.
 model = RandomForestClassifier(n_estimators=100)
 
-# Εκπέδευση του μοντέλου
+# Εκπαίδευση του μοντέλου.
 model.fit(X_train_data_replace_mean, Y_train_data_replace_mean)
 
 Y_pred_data_replace_mean = model.predict(X_test_data_replace_mean)
 
-# Aκρίβεια του μοντέλου
+# Aκρίβεια του μοντέλου.
 acc = accuracy_score(Y_test_data_replace_mean, Y_pred_data_replace_mean)
 f1 = f1_score(Y_test_data_replace_mean, Y_pred_data_replace_mean, average='binary')
 prec = precision_score(Y_test_data_replace_mean, Y_pred_data_replace_mean, average='binary')
@@ -236,19 +244,22 @@ print("Accuracy:",' %.3f' % (acc * 100.0))
 print("F1 score: ", f1)
 print("Precision score: ", prec)
 print("Recall score: ", recall)
+print('Confusion Matrix: \n', confusion_matrix(Y_test_data_replace_mean, Y_pred_data_replace_mean))
 print("----------")
 
+
 ##### Random Forest για το μητρώο με συμπλήρωση με KNN data_knn #####
+
 X_data_knn = data_knn.drop("stroke", axis=1)
 Y_data_knn = data_knn["stroke"]
 
 # Διαχωρισμός του data_replace_mean σε training-test με αναλογία 75%-25% 
 X_train_data_knn, X_test_data_knn, Y_train_data_knn, Y_test_data_knn = train_test_split(X_data_knn,Y_data_knn, test_size=0.25)
 
-# Δημιουργεία του μοντελου 
+# Δημιουργία του μοντελου 
 model = RandomForestClassifier(n_estimators=100)
 
-# Εκπέδευση του μοντέλου
+# Εκπαίδευση του μοντέλου
 model.fit(X_train_data_knn, Y_train_data_knn)
 
 Y_pred_data_knn = model.predict(X_test_data_knn)
@@ -262,19 +273,21 @@ print("Accuracy:",' %.3f' % (acc * 100.0))
 print("F1 score: ", f1)
 print("Precision score: ", prec)
 print("Recall score: ", recall)
+print('Confusion Matrix: \n', confusion_matrix(Y_test_data_knn, Y_pred_data_knn))
 print("----------")
 
 ##### Random Forest για το μητρώο με συμπλήρωση με linear regression data_regression #####
+
 X_data_regression = data_regression.drop("stroke", axis=1)
 Y_data_regression = data_regression["stroke"]
 
 # Διαχωρισμός του data_replace_mean σε training-test με αναλογία 75%-25% 
 X_train_data_regression, X_test_data_regression, Y_train_data_regression, Y_test_data_regression = train_test_split(X_data_regression,Y_data_regression, test_size=0.25)
 
-# Δημιουργεία του μοντελου 
+# Δημιουργία του μοντελου 
 model = RandomForestClassifier(n_estimators=100)
 
-# Εκπέδευση του μοντέλου
+# Εκπαίδευση του μοντέλου
 model.fit(X_train_data_regression, Y_train_data_regression)
 
 Y_pred_data_regression = model.predict(X_test_data_regression)
@@ -288,4 +301,6 @@ print("Accuracy:",' %.3f' % (acc * 100.0))
 print("F1 score: ", f1)
 print("Precision score: ", prec)
 print("Recall score: ", recall)
+print('Confusion Matrix: \n', confusion_matrix(Y_test_data_regression, Y_pred_data_regression))
 print("----------")
+
